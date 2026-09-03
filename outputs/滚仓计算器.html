@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="233skd1AG5DAhYaBn08Xzy">
+<head data-page-node-id="h4QQ0S85GtxkJlNhGcAF87">
+  <meta charset="UTF-8" data-page-node-id="k70HvJPZfpP7SKeLXFt6pS">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="vUkyCt9lC6zvrzgIONMTsV">
+  <title>滚仓计算器</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #0c1426;
+      --panel: #1b273b;
+      --panel-soft: #202e45;
+      --field: #34445d;
+      --header: #35465f;
+      --line: rgba(142, 164, 196, 0.19);
+      --text: #f7f9fc;
+      --muted: #aebbd0;
+      --green: #20c96b;
+      --green-hover: #18b85e;
+      --danger: #ff7d88;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(51, 79, 124, 0.18), transparent 32rem),
+        var(--page);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .app {
+      width: min(1900px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(31, 44, 66, 0.98), rgba(27, 39, 59, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.025);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .control-panel { padding: 32px 34px 28px; }
+
+    h1 {
+      margin: 0 0 30px;
+      text-align: center;
+      font-size: clamp(32px, 3vw, 52px);
+      line-height: 1.15;
+      letter-spacing: 0.06em;
+    }
+
+    .subtitle {
+      margin: -20px 0 28px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1.05fr 1.05fr 1.05fr 0.72fr auto;
+      gap: 18px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+      font-weight: 650;
+    }
+
+    input {
+      width: 100%;
+      height: 56px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      outline: none;
+      background: var(--field);
+      color: var(--text);
+      padding: 0 16px;
+      font: inherit;
+      font-size: 19px;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    input:hover { background: #3a4b65; }
+
+    input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(32, 201, 107, 0.16);
+    }
+
+    button {
+      height: 56px;
+      min-width: 132px;
+      border: 0;
+      border-radius: 11px;
+      background: var(--green);
+      color: #fff;
+      padding: 0 22px;
+      font: inherit;
+      font-size: 19px;
+      font-weight: 750;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(32, 201, 107, 0.18);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover { background: var(--green-hover); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:focus-visible { outline: 3px solid rgba(255, 255, 255, 0.75); outline-offset: 2px; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; background: var(--green); }
+
+    .btn-secondary {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: #273850; }
+
+    .error {
+      min-height: 22px;
+      margin: 14px 0 -4px;
+      color: var(--danger);
+      font-size: 14px;
+    }
+
+    .results-panel {
+      margin-top: 24px;
+      padding: 26px 26px 20px;
+      overflow: hidden;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      scrollbar-color: #4a5c77 #182338;
+      scrollbar-width: thin;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1260px;
+      border-collapse: collapse;
+      table-layout: auto;
+    }
+
+    thead { background: var(--header); }
+
+    th, td {
+      padding: 15px 16px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    th {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    td {
+      border-bottom: 1px solid var(--line);
+      font-size: 16px;
+    }
+
+    tbody tr { transition: background 0.15s ease; }
+    tbody tr:hover { background: rgba(65, 84, 115, 0.20); }
+    .growth { color: var(--green); font-weight: 750; }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px 12px;
+      padding: 18px 2px 0;
+      font-size: clamp(17px, 1.35vw, 22px);
+      font-weight: 800;
+    }
+
+    .summary-value { color: #fff; }
+    .divider { color: #6d809d; }
+
+    .note {
+      margin: 10px 2px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .history-panel { margin-top: 24px; overflow: hidden; }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .history-toggle {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      height: auto;
+      min-height: 44px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      color: var(--text);
+      font-size: 19px;
+      font-weight: 750;
+      text-align: left;
+    }
+
+    .history-toggle:hover { background: transparent; transform: none; }
+    .history-toggle:focus-visible { outline: 3px solid rgba(255, 255, 255, 0.75); outline-offset: 2px; border-radius: 6px; }
+
+    .history-count {
+      background: var(--field);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--muted);
+    }
+
+    .history-toggle .chevron {
+      color: var(--muted);
+      font-size: 14px;
+      transition: transform 0.18s ease;
+    }
+
+    .history-panel.collapsed .chevron { transform: rotate(-90deg); }
+    .history-panel.collapsed .history-list { display: none; }
+    .history-panel.collapsed .history-header { border-bottom: 0; }
+
+    .btn-ghost {
+      height: 40px;
+      min-width: 0;
+      padding: 0 14px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: transparent;
+      box-shadow: none;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .btn-ghost:hover { background: rgba(65, 84, 115, 0.25); transform: none; color: var(--text); }
+
+    .btn-danger-ghost { color: var(--danger); }
+    .btn-danger-ghost:hover { background: rgba(255, 125, 136, 0.10); color: var(--danger); }
+    .btn-danger-ghost.confirming { border-color: var(--danger); background: rgba(255, 125, 136, 0.14); color: var(--danger); }
+
+    .history-list { display: flex; flex-direction: column; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .history-item:last-child { border-bottom: 0; }
+    .history-item:hover { background: rgba(65, 84, 115, 0.15); }
+
+    .history-info { min-width: 0; }
+
+    .history-title { font-size: 17px; font-weight: 750; }
+    .history-meta { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .history-result { margin-top: 4px; font-size: 15px; }
+    .history-result strong { color: #fff; }
+    .history-time { margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+    .history-actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+    .btn-small {
+      height: 40px;
+      min-width: 0;
+      padding: 0 16px;
+      border-radius: 9px;
+      font-size: 15px;
+    }
+
+    .btn-delete {
+      background: transparent;
+      border: 1px solid var(--line);
+      box-shadow: none;
+      color: var(--danger);
+    }
+
+    .btn-delete:hover { background: rgba(255, 125, 136, 0.10); transform: none; color: var(--danger); }
+    .btn-delete.confirming { border-color: var(--danger); background: rgba(255, 125, 136, 0.14); }
+
+    .history-empty {
+      padding: 28px 22px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .button-wrap { display: flex; align-items: center; gap: 12px; }
+
+    .save-status {
+      color: var(--green);
+      font-size: 14px;
+      white-space: nowrap;
+      transition: opacity 0.4s ease;
+    }
+
+    .save-status.error { color: var(--danger); }
+    .save-status.fade { opacity: 0; }
+
+    .trades-panel { margin-top: 24px; overflow: hidden; }
+
+    .trades-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .trades-title { margin: 0; font-size: 19px; font-weight: 750; }
+
+    .trades-form {
+      display: grid;
+      grid-template-columns: 0.95fr 0.65fr 0.75fr 0.75fr 1.7fr auto;
+      gap: 14px;
+      align-items: end;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 112px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      outline: none;
+      background: var(--field);
+      color: var(--text);
+      padding: 14px 16px;
+      font: inherit;
+      font-size: 16px;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    textarea:hover { background: #3a4b65; }
+
+    textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(32, 201, 107, 0.16);
+    }
+
+    .trades-error {
+      margin: 10px 22px 0;
+      min-height: 18px;
+      color: var(--danger);
+      font-size: 14px;
+    }
+
+    .trades-table { min-width: 900px; }
+
+    .trades-table td.remark {
+      white-space: normal;
+      min-width: 220px;
+      max-width: 460px;
+      line-height: 1.55;
+      text-align: left;
+    }
+
+    .trades-empty {
+      padding: 26px 22px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .pos-result { color: var(--danger); font-weight: 750; }
+    .neg-result { color: var(--green); font-weight: 750; }
+
+    .trades-stats {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px 18px;
+      padding: 16px 22px 20px;
+      font-size: clamp(17px, 1.3vw, 21px);
+      font-weight: 800;
+    }
+
+    @media (max-width: 1280px) {
+      .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .button-wrap { grid-column: 1 / -1; flex-direction: column; align-items: stretch; }
+      button { width: 100%; }
+      .save-status { text-align: center; }
+      .trades-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .trades-form .field-remark, .trades-form .trades-submit-wrap { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 680px) {
+      .app { width: min(100% - 24px, 1900px); padding-top: 12px; }
+      .control-panel { padding: 24px 18px 20px; }
+      .controls { grid-template-columns: 1fr; gap: 14px; }
+      .button-wrap { grid-column: auto; }
+      .results-panel { margin-top: 14px; padding: 14px 12px 16px; border-radius: 14px; }
+      h1 { margin-bottom: 25px; }
+      .subtitle { margin-top: -17px; }
+      label { font-size: 16px; }
+      input, button { height: 52px; font-size: 17px; }
+      .summary { align-items: flex-start; }
+      .divider { display: none; }
+      .summary-item { flex-basis: 100%; }
+      .history-panel { margin-top: 14px; border-radius: 14px; }
+      .history-header { flex-wrap: wrap; padding: 14px 16px; }
+      .history-item { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px 16px; }
+      .history-actions { width: 100%; }
+      .history-actions .btn-small { flex: 1; }
+      .trades-form { grid-template-columns: 1fr; gap: 14px; }
+      .trades-form .field-remark, .trades-form .trades-submit-wrap { grid-column: auto; }
+      textarea { min-height: 128px; }
+      .trades-table thead { display: none; }
+      .trades-table, .trades-table tbody, .trades-table tr, .trades-table td { display: block; width: 100%; min-width: 0; }
+      .trades-table tr { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+      .trades-table tr:last-child { border-bottom: 0; }
+      .trades-table td { border-bottom: 0; padding: 6px 0; white-space: normal; text-align: left; }
+      .trades-table td.remark { max-width: none; }
+      .trades-table td::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--muted); font-size: 12px; font-weight: 650; }
+      .trades-stats { padding: 14px 16px 18px; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body data-page-node-id="ZMa0X0xH1cGPuudrwZynRd">
+  <main class="app" data-page-node-id="aNpLnkxlnzVJP8HXAjBPVC">
+    <section class="panel control-panel" aria-labelledby="page-title" data-page-node-id="eDN0VkcGTxkL61aTzRenX4">
+      <h1 id="page-title" data-page-node-id="ypcpHqqN9Hxc2oxXb6kna1">滚仓计算器</h1>
+      <p class="subtitle" data-page-node-id="Iq9BqWKjwPayuZAWmLWIWW">涨幅 × 上一阶段杠杆 = 1，资产逐级翻倍</p>
+
+      <form id="calculator-form" novalidate data-page-node-id="V2ZDazvboBnJitqHdzCWTc">
+        <div class="controls" data-page-node-id="PDPA6rN1Bq0b7wqKBECWu4">
+          <div data-page-node-id="bEhae4Mz29NIh3GfMXUPVM">
+            <label for="token" data-page-node-id="ffPDHSnCtBLuzR5YL9gBFn">代币名称</label>
+            <input id="token" name="token" type="text" value="DOGE" maxlength="30" autocomplete="off" data-page-node-id="Ogdre7Yenvo61wmysg6QRy">
+          </div>
+          <div data-page-node-id="g6kFHFIphvzK9Ukjz6gYmV">
+            <label for="price" data-page-node-id="H2GdmCO7oHBfIi9ZMnxAEB">代币当前价格（初始价格）</label>
+            <input id="price" name="price" type="number" value="0.06" min="0.000000000001" step="any" inputmode="decimal" data-page-node-id="W3Ofe9Zfn6GYNbjeUBVtk5">
+          </div>
+          <div data-page-node-id="qQythiDNRSGI5numcUewMa">
+            <label for="principal" data-page-node-id="Dpy2mPfqgUQDEPuHFGoTut">本金（U）</label>
+            <input id="principal" name="principal" type="number" value="600" min="0.00000001" step="any" inputmode="decimal" data-page-node-id="YDqgkhdGH33v3EeaS7vhZ3">
+          </div>
+          <div data-page-node-id="lgPTbFy18tK5VKMO4McCLv">
+            <label for="initial-leverage" data-page-node-id="qSJjoRNIlzg1b0L2tFYcN4">初始杠杆（倍）</label>
+            <input id="initial-leverage" name="initialLeverage" type="number" value="25" min="0.1" step="0.1" inputmode="decimal" data-page-node-id="WJ56U54HVbCmg5U9KEX4iL">
+          </div>
+          <div class="button-wrap" data-page-node-id="K8cbCRAqeF5vJhUDylJHuv">
+            <button type="submit" data-page-node-id="E5DhCu8EVN9eGTkAinhwKo">开始计算</button>
+            <button type="button" id="save-button" class="btn-secondary" data-page-node-id="MXuSvLI0vrxqigNKXCZm1z">保存这条记录</button>
+            <span id="save-status" class="save-status" role="status" aria-live="polite" data-page-node-id="GaoG5m8hAR3xVv4f0I0M1E"></span>
+          </div>
+        </div>
+        <p id="error" class="error" role="alert" aria-live="polite" data-page-node-id="W1wy1pBOfCtbDmZukLJ6MH"></p>
+      </form>
+    </section>
+
+    <section class="panel results-panel" aria-label="滚仓计算结果" data-page-node-id="Db1UMsHCKzTcikkyg5eKya">
+      <div class="table-scroll" data-page-node-id="bYeE61rGATMda1sLuVTe9t">
+        <table data-page-node-id="FqbTdFDB8FHFf78iyJDt16">
+          <thead data-page-node-id="RJwmE5AeYHROrPV1yjwSwa">
+            <tr data-page-node-id="FTepo4IAUf0JEleci5r4pN">
+              <th scope="col" data-page-node-id="4DrtiyiS6oD7N6kgEPAbSS">阶段</th>
+              <th scope="col" data-page-node-id="1gCyegjkYlPwEOCe03tjXE">代币</th>
+              <th scope="col" data-page-node-id="4Yd8ZPQoonTI4a80Slart5">价格</th>
+              <th scope="col" data-page-node-id="irDdltsERqXEvKhJCdiYVo">涨幅</th>
+              <th scope="col" data-page-node-id="4jher2vYIsRMbMhXyEjKWW">累计涨幅</th>
+              <th scope="col" data-page-node-id="SLAKYRCnVZTajEBgQLCc4t">币数量</th>
+              <th scope="col" data-page-node-id="Ce3r84z4dD0a5TDHRNhXOc">杠杆</th>
+              <th scope="col" data-page-node-id="hYakpCA5SAGoiIwm0utYUM">仓位</th>
+              <th scope="col" data-page-node-id="t6nW1f4nJs5qf8KXxStwPR">收益</th>
+              <th scope="col" data-page-node-id="VA6PFULKF7xSlRAjSb5Peh">资产（U）</th>
+            </tr>
+          </thead>
+          <tbody id="result-body" data-page-node-id="JGI0z3Mfj6rfsUzrE2pZGl"></tbody>
+        </table>
+      </div>
+
+      <div class="summary" aria-live="polite" data-page-node-id="6F5lTRCNDqpYmPHWBUO1pD">
+        <span class="summary-item" data-page-node-id="kiKiZY3OXa5ymKbmGLHDWN">最终资产：<span id="final-assets" class="summary-value" data-page-node-id="WRw6ZLFXg43rABs4AFxls0">—</span> U</span>
+        <span class="divider" data-page-node-id="qCqL33rxMAb1oRtFTUNP2I">|</span>
+        <span class="summary-item" data-page-node-id="bf7kT8oRzrJOtMdIuzeip6">收益率：<span id="return-rate" class="summary-value" data-page-node-id="6saBb6GCFnpPavUs1gVBJg">—</span></span>
+      </div>
+      <p class="note" data-page-node-id="xKyZpGA2HscS1uDrrMaui7">说明：每一级涨幅自动按“1 ÷ 上一阶段杠杆”计算；资产收益为“上一阶段资产 × 上一阶段杠杆 × 本阶段涨幅”，币数量为“本阶段资产 ÷ 本阶段价格”。结果未计入手续费、资金费率、滑点、强平风险与交易规则，仅用于公式演示。</p>
+    </section>
+
+    <section class="panel history-panel" id="history-panel" aria-label="历史记录" data-page-node-id="zhCi4n0catQECcdYeZHN0P">
+      <div class="history-header" data-page-node-id="QM8ITJxvGZUII4lBXaWDQu">
+        <button type="button" id="history-toggle" class="history-toggle" aria-expanded="true" aria-controls="history-list" data-page-node-id="NztixqJ7GUqvrkVvina0WZ">
+          <span data-page-node-id="6ZSp8w3dGgIIwnGKWw5bBE">历史记录</span>
+          <span id="history-count" class="history-count" data-page-node-id="yrf92VRTJPzMAP9CSzvCVt">0</span>
+          <span class="chevron" aria-hidden="true" data-page-node-id="MvrdAbZnfOfFsgrqsoMBoQ">▼</span>
+        </button>
+        <button type="button" id="export-history" class="btn-ghost" data-page-node-id="4sMMQWJJW4VDHQtOL1rQbZ">导出</button>
+        <button type="button" id="import-history" class="btn-ghost" data-page-node-id="Vh3AB6JLLIhWfarzoFgzBA">导入</button>
+        <button type="button" id="clear-history" class="btn-ghost btn-danger-ghost" data-page-node-id="CB6J3X0iosZEo01i2co1ra">清空全部</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden data-page-node-id="7akayqZcuEUJGzQShpWM3J">
+      </div>
+      <div id="history-list" class="history-list" data-page-node-id="CP0vb98g7D71zhYtGqgrvR"></div>
+    </section>
+
+    <section class="panel trades-panel" id="trades-panel" aria-label="实盘记录">
+      <div class="trades-header">
+        <h2 class="trades-title">实盘记录</h2>
+        <span id="trades-count" class="history-count">0 笔</span>
+      </div>
+      <form id="trades-form" class="trades-form" novalidate>
+        <div>
+          <label for="trade-time">时间</label>
+          <input id="trade-time" name="tradeTime" type="datetime-local">
+        </div>
+        <div>
+          <label for="trade-token">代币</label>
+          <input id="trade-token" name="tradeToken" type="text" maxlength="30" autocomplete="off" placeholder="如 DOGE">
+        </div>
+        <div>
+          <label for="trade-position">开仓位大小（U）</label>
+          <input id="trade-position" name="tradePosition" type="number" step="any" min="0" inputmode="decimal" placeholder="如 50">
+        </div>
+        <div>
+          <label for="trade-result">最终结果（U）</label>
+          <input id="trade-result" name="tradeResult" type="number" step="any" inputmode="decimal" placeholder="盈利填正数，亏损填负数">
+        </div>
+        <div class="field-remark">
+          <label for="trade-note">备注</label>
+          <textarea id="trade-note" name="tradeNote" rows="3" placeholder="记录当时的情况与总结……"></textarea>
+        </div>
+        <div class="trades-submit-wrap">
+          <button type="submit">添加记录</button>
+        </div>
+      </form>
+      <p id="trades-error" class="trades-error" role="alert" aria-live="polite"></p>
+      <div class="table-scroll">
+        <table class="trades-table">
+          <thead>
+            <tr>
+              <th scope="col">时间</th>
+              <th scope="col">代币</th>
+              <th scope="col">开仓位大小</th>
+              <th scope="col">最终结果</th>
+              <th scope="col">备注</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody id="trades-body"></tbody>
+        </table>
+      </div>
+      <div class="trades-stats">
+        <span>操作笔数：<span id="trades-total-count" class="summary-value">0</span> 笔</span>
+        <span>总收益：<span id="trades-total" class="summary-value">0 U</span></span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // 杠杆用于下一阶段：下一阶段涨幅 = 1 / 上一阶段杠杆。
+      const laterLeverages = [20, 20, 15, 10, 5, 3, 2, 1, 0.5, 0.2, 0.1];
+
+      const form = document.getElementById("calculator-form");
+      const resultBody = document.getElementById("result-body");
+      const errorBox = document.getElementById("error");
+      const finalAssets = document.getElementById("final-assets");
+      const returnRate = document.getElementById("return-rate");
+
+      const saveButton = document.getElementById("save-button");
+      const saveStatus = document.getElementById("save-status");
+
+      const historyPanel = document.getElementById("history-panel");
+      const historyToggle = document.getElementById("history-toggle");
+      const historyCount = document.getElementById("history-count");
+      const historyList = document.getElementById("history-list");
+      const clearHistoryButton = document.getElementById("clear-history");
+      const exportHistoryButton = document.getElementById("export-history");
+      const importHistoryButton = document.getElementById("import-history");
+      const importFileInput = document.getElementById("import-file");
+
+      const HISTORY_KEY = "rollcalc.history.v1";
+      const HISTORY_LIMIT = 100;
+
+      let records = [];
+      let lastResult = null;
+      let saveStatusTimer = null;
+      const confirmTimers = new Map();
+
+      const cleanZero = value => Math.abs(value) < 1e-12 ? 0 : value;
+
+      function formatNumber(value, maxFractionDigits = 8, minFractionDigits = 0) {
+        if (!Number.isFinite(value)) return "超出范围";
+        const abs = Math.abs(value);
+        if (abs !== 0 && (abs >= 1e15 || abs < 1e-8)) {
+          return value.toExponential(6);
+        }
+        return new Intl.NumberFormat("zh-CN", {
+          useGrouping: true,
+          minimumFractionDigits: minFractionDigits,
+          maximumFractionDigits: maxFractionDigits,
+        }).format(cleanZero(value));
+      }
+
+      function formatPercent(decimal, digits = 0) {
+        return `${formatNumber(cleanZero(decimal * 100), digits, digits)}%`;
+      }
+
+      function formatPercentSmart(decimal, maxDigits = 4) {
+        return `${formatNumber(cleanZero(decimal * 100), maxDigits)}%`;
+      }
+
+      function formatDateTime(timestamp) {
+        const date = new Date(timestamp);
+        const pad = value => String(value).padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      }
+
+      function generateId() {
+        if (window.crypto && typeof crypto.randomUUID === "function") {
+          return crypto.randomUUID();
+        }
+        return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      }
+
+      function readInputs() {
+        const token = document.getElementById("token").value.trim();
+        const price = Number(document.getElementById("price").value);
+        const principal = Number(document.getElementById("principal").value);
+        const initialLeverage = Number(document.getElementById("initial-leverage").value);
+
+        if (!token) throw new Error("请输入代币名称。");
+        if (!Number.isFinite(price) || price <= 0) throw new Error("初始价格必须是大于 0 的数字。");
+        if (!Number.isFinite(principal) || principal <= 0) throw new Error("本金必须是大于 0 的数字。");
+        if (!Number.isFinite(initialLeverage) || initialLeverage <= 0) throw new Error("初始杠杆必须是大于 0 的数字，例如 20 或 25。");
+
+        return { token, price, principal, initialLeverage };
+      }
+
+      function calculateModel({ token, price, principal, initialLeverage }) {
+        const leverages = [initialLeverage, ...laterLeverages];
+        const rows = [];
+        let cumulativeGrowth = 0;
+        let currentPrice = price;
+        let coinQuantity = principal / price;
+        let assets = principal;
+
+        for (let index = 0; index < leverages.length; index += 1) {
+          const growth = index === 0 ? 0 : 1 / leverages[index - 1];
+          let profit = 0;
+
+          if (index > 0) {
+            const previous = rows[index - 1];
+            currentPrice = previous.price * (1 + growth);
+            const profitU = previous.assets * previous.leverage * growth;
+            assets = previous.assets + profitU;
+            coinQuantity = assets / currentPrice;
+            profit = profitU / currentPrice;
+          }
+
+          cumulativeGrowth += growth;
+          const leverage = leverages[index];
+
+          rows.push({
+            stage: index + 1,
+            token,
+            price: currentPrice,
+            growth,
+            cumulativeGrowth,
+            coinQuantity,
+            leverage,
+            position: coinQuantity * leverage,
+            profit,
+            assets,
+          });
+        }
+
+        return rows;
+      }
+
+      function renderRows(rows, principal) {
+        resultBody.replaceChildren();
+        const fragment = document.createDocumentFragment();
+
+        rows.forEach(row => {
+          const tr = document.createElement("tr");
+          const cells = [
+            { value: row.stage },
+            { value: row.token },
+            { value: formatNumber(row.price, 8) },
+            { value: formatPercentSmart(row.growth), className: "growth" },
+            { value: formatPercentSmart(row.cumulativeGrowth) },
+            { value: formatNumber(row.coinQuantity, 8) },
+            { value: formatNumber(row.leverage, 2) },
+            { value: formatNumber(row.position, 8) },
+            { value: formatNumber(row.profit, 8) },
+            { value: formatNumber(row.assets, 0) },
+          ];
+
+          cells.forEach(cell => {
+            const td = document.createElement("td");
+            td.textContent = cell.value;
+            if (cell.className) td.className = cell.className;
+            tr.appendChild(td);
+          });
+          fragment.appendChild(tr);
+        });
+
+        resultBody.appendChild(fragment);
+        const finalValue = rows.at(-1).assets;
+        finalAssets.textContent = formatNumber(finalValue, 8);
+        returnRate.textContent = formatPercent((finalValue / principal) - 1, 2);
+      }
+
+      function runCalculation() {
+        try {
+          errorBox.textContent = "";
+          const inputs = readInputs();
+          const rows = calculateModel(inputs);
+          if (rows.some(row => Object.values(row).some(value => typeof value === "number" && !Number.isFinite(value)))) {
+            throw new Error("输入数值过大，计算结果超出浏览器可表示范围，请减小输入值。");
+          }
+          renderRows(rows, inputs.principal);
+          lastResult = { inputs, rows };
+          saveButton.disabled = false;
+        } catch (error) {
+          errorBox.textContent = error.message;
+          lastResult = null;
+          saveButton.disabled = true;
+        }
+      }
+
+      function showSaveStatus(message, isError = false) {
+        if (saveStatusTimer) clearTimeout(saveStatusTimer);
+        saveStatus.textContent = message;
+        saveStatus.classList.toggle("error", isError);
+        saveStatus.classList.remove("fade");
+        saveStatusTimer = setTimeout(() => saveStatus.classList.add("fade"), 2600);
+      }
+
+      function sameInputs(a, b) {
+        return a.token === b.token
+          && a.price === b.price
+          && a.principal === b.principal
+          && a.initialLeverage === b.initialLeverage;
+      }
+
+      function loadHistory() {
+        try {
+          const raw = localStorage.getItem(HISTORY_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(parsed)) {
+            records = parsed.filter(isValidRecord);
+          }
+        } catch (error) {
+          records = [];
+        }
+      }
+
+      function isValidRecord(record) {
+        return Boolean(record)
+          && typeof record === "object"
+          && typeof record.id === "string"
+          && typeof record.savedAt === "number"
+          && record.inputs && typeof record.inputs.token === "string"
+          && Number.isFinite(record.inputs.price)
+          && Number.isFinite(record.inputs.principal)
+          && Number.isFinite(record.inputs.initialLeverage)
+          && Array.isArray(record.rows)
+          && record.rows.length > 0
+          && Number.isFinite(record.rows.at(-1).assets);
+      }
+
+      function persistHistory() {
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(records));
+          return true;
+        } catch (error) {
+          showSaveStatus("本地存储不可用，记录未能保存", true);
+          return false;
+        }
+      }
+
+      function handleSave() {
+        if (!lastResult) return;
+        const record = {
+          id: generateId(),
+          savedAt: Date.now(),
+          inputs: { ...lastResult.inputs },
+          rows: lastResult.rows.map(row => ({ ...row })),
+        };
+        records.unshift(record);
+        if (records.length > HISTORY_LIMIT) {
+          records.length = HISTORY_LIMIT;
+        }
+        if (persistHistory()) {
+          showSaveStatus(records.length > 1 && sameInputs(records[0].inputs, records[1].inputs)
+            ? "已保存（与最近一条参数相同）"
+            : "已保存");
+        }
+        renderHistory();
+      }
+
+      function restoreRecord(record) {
+        document.getElementById("token").value = record.inputs.token;
+        document.getElementById("price").value = record.inputs.price;
+        document.getElementById("principal").value = record.inputs.principal;
+        document.getElementById("initial-leverage").value = record.inputs.initialLeverage;
+
+        renderRows(record.rows, record.inputs.principal);
+        lastResult = {
+          inputs: { ...record.inputs },
+          rows: record.rows.map(row => ({ ...row })),
+        };
+        saveButton.disabled = false;
+        errorBox.textContent = "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function renderHistory() {
+        historyCount.textContent = String(records.length);
+        historyList.replaceChildren();
+
+        if (records.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "history-empty";
+          empty.textContent = "暂无历史记录。计算后点击「保存这条记录」，即可在这里随时查看和回退。";
+          historyList.appendChild(empty);
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        records.forEach(record => {
+          const item = document.createElement("div");
+          item.className = "history-item";
+
+          const info = document.createElement("div");
+          info.className = "history-info";
+
+          const title = document.createElement("div");
+          title.className = "history-title";
+          title.textContent = record.inputs.token;
+
+          const meta = document.createElement("div");
+          meta.className = "history-meta";
+          meta.textContent = `初始价格 ${formatNumber(record.inputs.price, 8)} · 本金 ${formatNumber(record.inputs.principal, 2)} U · 初始杠杆 ${formatNumber(record.inputs.initialLeverage, 2)} 倍`;
+
+          const result = document.createElement("div");
+          result.className = "history-result";
+          const strong = document.createElement("strong");
+          strong.textContent = `${formatNumber(record.rows.at(-1).assets, 8)} U`;
+          result.append("最终资产：", strong);
+
+          const time = document.createElement("div");
+          time.className = "history-time";
+          time.textContent = `保存于 ${formatDateTime(record.savedAt)}`;
+
+          info.append(title, meta, result, time);
+
+          const actions = document.createElement("div");
+          actions.className = "history-actions";
+
+          const viewButton = document.createElement("button");
+          viewButton.type = "button";
+          viewButton.className = "btn-small btn-secondary";
+          viewButton.textContent = "查看 / 回退";
+          viewButton.addEventListener("click", () => restoreRecord(record));
+
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "btn-small btn-delete";
+          deleteButton.textContent = "删除";
+          deleteButton.addEventListener("click", () => {
+            const pending = confirmTimers.get(record.id);
+            if (pending) {
+              clearTimeout(pending.timer);
+              confirmTimers.delete(record.id);
+              records = records.filter(entry => entry.id !== record.id);
+              persistHistory();
+              renderHistory();
+              showSaveStatus("已删除该条记录");
+              return;
+            }
+            deleteButton.textContent = "确认删除？";
+            deleteButton.classList.add("confirming");
+            const timer = setTimeout(() => {
+              deleteButton.textContent = "删除";
+              deleteButton.classList.remove("confirming");
+              confirmTimers.delete(record.id);
+            }, 3500);
+            confirmTimers.set(record.id, { timer, button: deleteButton });
+          });
+
+          actions.append(viewButton, deleteButton);
+          item.append(info, actions);
+          fragment.appendChild(item);
+        });
+
+        historyList.appendChild(fragment);
+      }
+
+      function handleClearAll() {
+        if (records.length === 0) {
+          showSaveStatus("暂无可清空的记录");
+          return;
+        }
+        if (!clearHistoryButton.classList.contains("confirming")) {
+          clearHistoryButton.textContent = "确认清空？";
+          clearHistoryButton.classList.add("confirming");
+          setTimeout(() => {
+            clearHistoryButton.textContent = "清空全部";
+            clearHistoryButton.classList.remove("confirming");
+          }, 3500);
+          return;
+        }
+        clearHistoryButton.textContent = "清空全部";
+        clearHistoryButton.classList.remove("confirming");
+        records = [];
+        persistHistory();
+        renderHistory();
+        showSaveStatus("已清空全部历史记录");
+      }
+
+      function handleExport() {
+        if (records.length === 0) {
+          showSaveStatus("暂无记录可导出", true);
+          return;
+        }
+        const payload = { version: 1, exportedAt: Date.now(), records };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const now = new Date();
+        const pad = value => String(value).padStart(2, "0");
+        link.href = url;
+        link.download = `滚仓计算器历史备份-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showSaveStatus("已导出备份文件");
+      }
+
+      function handleImportFile(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = "";
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result));
+            const incoming = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
+            const valid = incoming.filter(isValidRecord);
+            if (valid.length === 0) {
+              showSaveStatus("导入失败：文件中没有有效记录", true);
+              return;
+            }
+            const existingIds = new Set(records.map(record => record.id));
+            const merged = valid.filter(record => !existingIds.has(record.id));
+            records = [...merged, ...records].sort((a, b) => b.savedAt - a.savedAt);
+            if (records.length > HISTORY_LIMIT) {
+              records.length = HISTORY_LIMIT;
+            }
+            if (persistHistory()) {
+              showSaveStatus(`导入完成：新增 ${merged.length} 条，跳过重复 ${valid.length - merged.length} 条`);
+            }
+            renderHistory();
+          } catch (error) {
+            showSaveStatus("导入失败：文件不是有效的备份 JSON", true);
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+        runCalculation();
+      });
+
+      saveButton.addEventListener("click", handleSave);
+
+      historyToggle.addEventListener("click", () => {
+        const collapsed = historyPanel.classList.toggle("collapsed");
+        historyToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      });
+
+      clearHistoryButton.addEventListener("click", handleClearAll);
+      exportHistoryButton.addEventListener("click", handleExport);
+      importHistoryButton.addEventListener("click", () => importFileInput.click());
+      importFileInput.addEventListener("change", handleImportFile);
+
+      // ---------- 实盘记录 ----------
+      const tradesForm = document.getElementById("trades-form");
+      const tradesError = document.getElementById("trades-error");
+      const tradesBody = document.getElementById("trades-body");
+      const tradesCountBadge = document.getElementById("trades-count");
+      const tradesTotalCount = document.getElementById("trades-total-count");
+      const tradesTotal = document.getElementById("trades-total");
+
+      const TRADES_KEY = "rollcalc.trades.v1";
+      const TRADES_LIMIT = 500;
+      let trades = [];
+      const tradeDeleteTimers = new Map();
+
+      function setDefaultTradeTime() {
+        const now = new Date();
+        const pad = value => String(value).padStart(2, "0");
+        document.getElementById("trade-time").value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      }
+
+      function isValidTrade(trade) {
+        return Boolean(trade)
+          && typeof trade === "object"
+          && typeof trade.id === "string"
+          && Number.isFinite(trade.time)
+          && typeof trade.token === "string"
+          && Number.isFinite(trade.position)
+          && Number.isFinite(trade.result)
+          && typeof trade.note === "string";
+      }
+
+      function loadTrades() {
+        try {
+          const raw = localStorage.getItem(TRADES_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(parsed)) {
+            trades = parsed.filter(isValidTrade);
+          }
+        } catch (error) {
+          trades = [];
+        }
+      }
+
+      function persistTrades() {
+        try {
+          localStorage.setItem(TRADES_KEY, JSON.stringify(trades));
+          return true;
+        } catch (error) {
+          tradesError.textContent = "本地存储不可用，记录未能保存";
+          return false;
+        }
+      }
+
+      function showTradesError(message) {
+        tradesError.textContent = message;
+      }
+
+      function formatSignedNumber(value, digits = 2) {
+        return `${value > 0 ? "+" : ""}${formatNumber(value, digits)}`;
+      }
+
+      function renderTrades() {
+        trades.sort((a, b) => b.time - a.time);
+        tradesCountBadge.textContent = `${trades.length} 笔`;
+        tradesTotalCount.textContent = String(trades.length);
+
+        const total = trades.reduce((sum, trade) => sum + trade.result, 0);
+        tradesTotal.textContent = `${formatSignedNumber(total)} U`;
+        tradesTotal.className = `summary-value ${total > 0 ? "pos-result" : total < 0 ? "neg-result" : ""}`;
+
+        tradesBody.replaceChildren();
+
+        if (trades.length === 0) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 6;
+          td.className = "trades-empty";
+          td.textContent = "暂无实盘记录。在上方填写后点击「添加记录」，总收益会自动累加。";
+          tr.appendChild(td);
+          tradesBody.appendChild(tr);
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        trades.forEach(trade => {
+          const tr = document.createElement("tr");
+          const cells = [
+            { label: "时间", value: formatDateTime(trade.time) },
+            { label: "代币", value: trade.token },
+            { label: "开仓位大小", value: `${formatNumber(trade.position, 2)} U` },
+            {
+              label: "最终结果",
+              value: `${formatSignedNumber(trade.result)} U`,
+              className: trade.result > 0 ? "pos-result" : trade.result < 0 ? "neg-result" : "",
+            },
+            { label: "备注", value: trade.note || "—", className: "remark" },
+          ];
+
+          cells.forEach(cell => {
+            const td = document.createElement("td");
+            td.textContent = cell.value;
+            if (cell.className) td.className = cell.className;
+            td.setAttribute("data-label", cell.label);
+            tr.appendChild(td);
+          });
+
+          const actionTd = document.createElement("td");
+          actionTd.setAttribute("data-label", "操作");
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "btn-small btn-delete";
+          deleteButton.textContent = "删除";
+          deleteButton.addEventListener("click", () => {
+            const pending = tradeDeleteTimers.get(trade.id);
+            if (pending) {
+              clearTimeout(pending);
+              tradeDeleteTimers.delete(trade.id);
+              trades = trades.filter(entry => entry.id !== trade.id);
+              persistTrades();
+              renderTrades();
+              return;
+            }
+            deleteButton.textContent = "确认删除？";
+            deleteButton.classList.add("confirming");
+            const timer = setTimeout(() => {
+              deleteButton.textContent = "删除";
+              deleteButton.classList.remove("confirming");
+              tradeDeleteTimers.delete(trade.id);
+            }, 3500);
+            tradeDeleteTimers.set(trade.id, timer);
+          });
+          actionTd.appendChild(deleteButton);
+          tr.appendChild(actionTd);
+
+          fragment.appendChild(tr);
+        });
+
+        tradesBody.appendChild(fragment);
+      }
+
+      function resetTradesForm() {
+        document.getElementById("trade-token").value = "";
+        document.getElementById("trade-position").value = "";
+        document.getElementById("trade-result").value = "";
+        document.getElementById("trade-note").value = "";
+        setDefaultTradeTime();
+        document.getElementById("trade-token").focus();
+      }
+
+      tradesForm.addEventListener("submit", event => {
+        event.preventDefault();
+        tradesError.textContent = "";
+
+        const token = document.getElementById("trade-token").value.trim();
+        const note = document.getElementById("trade-note").value.trim();
+        const timeRaw = document.getElementById("trade-time").value;
+        const position = Number(document.getElementById("trade-position").value);
+        const result = Number(document.getElementById("trade-result").value);
+
+        if (!token) {
+          showTradesError("请输入代币名称。");
+          return;
+        }
+        const time = timeRaw ? new Date(timeRaw).getTime() : NaN;
+        if (!Number.isFinite(time)) {
+          showTradesError("请选择有效的时间。");
+          return;
+        }
+        if (!Number.isFinite(position) || position <= 0) {
+          showTradesError("开仓位大小必须是大于 0 的数字。");
+          return;
+        }
+        if (!Number.isFinite(result)) {
+          showTradesError("最终结果必须是数字，盈利填正数，亏损填负数。");
+          return;
+        }
+
+        trades.push({ id: generateId(), time, token, position, result, note });
+        if (trades.length > TRADES_LIMIT) {
+          trades.length = TRADES_LIMIT;
+        }
+        if (persistTrades()) {
+          renderTrades();
+          resetTradesForm();
+        }
+      });
+
+      loadHistory();
+      renderHistory();
+      loadTrades();
+      renderTrades();
+      setDefaultTradeTime();
+      runCalculation();
+    })();
+  </script>
+</body>
+</html>
