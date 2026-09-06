@@ -379,6 +379,116 @@
       font-size: 14px;
     }
 
+    .trades-form .field-images { grid-column: 1 / -1; }
+
+    .images-drop {
+      border: 1.5px dashed rgba(255, 255, 255, 0.22);
+      border-radius: 11px;
+      padding: 13px 16px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+      user-select: none;
+    }
+
+    .images-drop:hover, .images-drop:focus-visible, .images-drop.dragover {
+      border-color: var(--green);
+      color: var(--text);
+      background: rgba(32, 201, 107, 0.07);
+      outline: none;
+    }
+
+    .images-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .images-preview:empty { display: none; }
+
+    .image-thumb {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      border-radius: 9px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      flex: none;
+    }
+
+    .image-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .image-thumb .thumb-remove {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: rgba(10, 14, 22, 0.72);
+      color: #fff;
+      font-size: 12px;
+      line-height: 20px;
+      cursor: pointer;
+    }
+
+    .image-thumb .thumb-remove:hover { background: rgba(220, 60, 74, 0.9); }
+
+    .remark-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .remark-images:empty { display: none; }
+
+    .remark-image-btn {
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      width: 64px;
+      height: 64px;
+      cursor: zoom-in;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .remark-image-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .remark-image-btn:hover { border-color: var(--green); }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 30px;
+      background: rgba(7, 11, 19, 0.88);
+      cursor: zoom-out;
+    }
+
+    .lightbox.open { display: flex; }
+
+    .lightbox img {
+      max-width: min(1600px, 94vw);
+      max-height: 88vh;
+      border-radius: 12px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+    }
+
+    .lightbox-hint { margin: 0; color: var(--muted); font-size: 13px; }
+
     .trades-table { min-width: 900px; }
 
     .trades-table td.remark {
@@ -554,6 +664,13 @@
           <label for="trade-note">备注</label>
           <textarea id="trade-note" name="tradeNote" rows="3" placeholder="记录当时的情况与总结……"></textarea>
         </div>
+        <div class="field-images">
+          <div id="trade-images-drop" class="images-drop" role="button" tabindex="0" aria-label="添加图片：点击选择、拖拽或 Ctrl/Cmd+V 粘贴">
+            图片：点击选择 · 拖拽到这里 · Ctrl/Cmd+V 粘贴（可多张）
+          </div>
+          <div id="trade-images-preview" class="images-preview"></div>
+          <input type="file" id="trade-images-input" accept="image/*" multiple hidden>
+        </div>
         <div class="trades-submit-wrap">
           <button type="submit">添加记录</button>
         </div>
@@ -579,6 +696,11 @@
         <span>总收益：<span id="trades-total" class="summary-value">0 U</span></span>
       </div>
     </section>
+
+    <div id="image-lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="查看图片">
+      <img id="lightbox-img" alt="实盘记录图片">
+      <p class="lightbox-hint">点击任意位置或按 ESC 关闭</p>
+    </div>
   </main>
 
   <script>
@@ -1028,11 +1150,211 @@
       let trades = [];
       const tradeDeleteTimers = new Map();
 
+      // ---------- 实盘图片（IndexedDB 本地存储） ----------
+      const IMAGES_DB = "rollcalc.images.v1";
+      const IMAGES_STORE = "images";
+      const FULL_MAX_EDGE = 1600;
+      const THUMB_MAX_EDGE = 320;
+
+      let imagesDbPromise = null;
+
+      function openImagesDb() {
+        if (imagesDbPromise) return imagesDbPromise;
+        imagesDbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(IMAGES_DB, 1);
+          request.onupgradeneeded = () => {
+            request.result.createObjectStore(IMAGES_STORE, { keyPath: "id" });
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error || new Error("IndexedDB 打开失败"));
+        });
+        return imagesDbPromise;
+      }
+
+      function withImageStore(mode, action) {
+        return openImagesDb().then(db => new Promise((resolve, reject) => {
+          const tx = db.transaction(IMAGES_STORE, mode);
+          const request = action(tx.objectStore(IMAGES_STORE));
+          tx.oncomplete = () => resolve(request ? request.result : undefined);
+          tx.onerror = () => reject(tx.error || new Error("IndexedDB 操作失败"));
+          tx.onabort = () => reject(tx.error || new Error("IndexedDB 操作被中断"));
+        }));
+      }
+
+      const getImageRecord = id => withImageStore("readonly", store => store.get(id));
+      const putImageRecord = record => withImageStore("readwrite", store => store.put(record));
+      const deleteImageRecords = ids => withImageStore("readwrite", store => {
+        ids.forEach(id => store.delete(id));
+      });
+
+      function compressImage(sourceBlob, maxEdge, quality) {
+        return new Promise((resolve, reject) => {
+          const objectUrl = URL.createObjectURL(sourceBlob);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+            const width = Math.max(1, Math.round(img.naturalWidth * scale));
+            const height = Math.max(1, Math.round(img.naturalHeight * scale));
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+            canvas.toBlob(
+              blob => blob ? resolve(blob) : reject(new Error("图片编码失败")),
+              "image/jpeg",
+              quality
+            );
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("图片无法读取"));
+          };
+          img.src = objectUrl;
+        });
+      }
+
       function setDefaultTradeTime() {
         const now = new Date();
         const pad = value => String(value).padStart(2, "0");
         document.getElementById("trade-time").value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
       }
+
+      // ---------- 待添加图片（点击 / 拖拽 / 粘贴） ----------
+      const imagesDrop = document.getElementById("trade-images-drop");
+      const imagesInput = document.getElementById("trade-images-input");
+      const imagesPreview = document.getElementById("trade-images-preview");
+
+      let pendingImages = []; // { full: Blob, thumb: Blob }
+      const pendingUrls = new Set();
+      const liveImageUrls = new Set();
+
+      function clearBlobUrls(urlSet) {
+        urlSet.forEach(url => URL.revokeObjectURL(url));
+        urlSet.clear();
+      }
+
+      function renderPendingImages() {
+        clearBlobUrls(pendingUrls);
+        imagesPreview.replaceChildren();
+        pendingImages.forEach((item, index) => {
+          const thumbBox = document.createElement("div");
+          thumbBox.className = "image-thumb";
+          const img = document.createElement("img");
+          img.alt = "待添加图片";
+          const url = URL.createObjectURL(item.thumb);
+          pendingUrls.add(url);
+          img.src = url;
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "thumb-remove";
+          removeButton.textContent = "×";
+          removeButton.setAttribute("aria-label", "移除这张图片");
+          removeButton.addEventListener("click", () => {
+            pendingImages.splice(index, 1);
+            renderPendingImages();
+          });
+          thumbBox.appendChild(img);
+          thumbBox.appendChild(removeButton);
+          imagesPreview.appendChild(thumbBox);
+        });
+      }
+
+      function clearPendingImages() {
+        pendingImages = [];
+        renderPendingImages();
+      }
+
+      async function addImageFiles(files) {
+        tradesError.textContent = "";
+        for (const file of files) {
+          if (!file || !file.type || !file.type.startsWith("image/")) continue;
+          try {
+            const full = await compressImage(file, FULL_MAX_EDGE, 0.85);
+            const thumb = await compressImage(full, THUMB_MAX_EDGE, 0.8);
+            pendingImages.push({ full, thumb });
+          } catch (error) {
+            showTradesError(`图片处理失败：${error.message}`);
+          }
+        }
+        renderPendingImages();
+      }
+
+      imagesDrop.addEventListener("click", () => imagesInput.click());
+      imagesDrop.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          imagesInput.click();
+        }
+      });
+      imagesInput.addEventListener("change", () => {
+        addImageFiles(Array.from(imagesInput.files || []));
+        imagesInput.value = "";
+      });
+
+      ["dragenter", "dragover"].forEach(type => {
+        imagesDrop.addEventListener(type, event => {
+          event.preventDefault();
+          imagesDrop.classList.add("dragover");
+        });
+      });
+      ["dragleave", "drop"].forEach(type => {
+        imagesDrop.addEventListener(type, event => {
+          event.preventDefault();
+          imagesDrop.classList.remove("dragover");
+        });
+      });
+      imagesDrop.addEventListener("drop", event => {
+        addImageFiles(Array.from(event.dataTransfer ? event.dataTransfer.files : []));
+      });
+
+      document.addEventListener("paste", event => {
+        const items = event.clipboardData && event.clipboardData.items;
+        if (!items) return;
+        const files = [];
+        for (const item of items) {
+          if (item.kind === "file" && item.type.startsWith("image/")) {
+            const file = item.getAsFile();
+            if (file) files.push(file);
+          }
+        }
+        if (files.length) {
+          event.preventDefault();
+          addImageFiles(files);
+        }
+      });
+
+      // ---------- 大图查看 ----------
+      const lightbox = document.getElementById("image-lightbox");
+      const lightboxImg = document.getElementById("lightbox-img");
+      let lightboxUrl = null;
+
+      function openLightbox(imageId) {
+        getImageRecord(imageId).then(record => {
+          if (!record || !record.full) {
+            showTradesError("图片不存在或已被清理。");
+            return;
+          }
+          if (lightboxUrl) URL.revokeObjectURL(lightboxUrl);
+          lightboxUrl = URL.createObjectURL(record.full);
+          lightboxImg.src = lightboxUrl;
+          lightbox.classList.add("open");
+        }).catch(() => showTradesError("图片读取失败。"));
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove("open");
+        if (lightboxUrl) {
+          URL.revokeObjectURL(lightboxUrl);
+          lightboxUrl = null;
+        }
+        lightboxImg.removeAttribute("src");
+      }
+
+      lightbox.addEventListener("click", closeLightbox);
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+      });
 
       function isValidTrade(trade) {
         return Boolean(trade)
@@ -1085,6 +1407,7 @@
         tradesTotal.className = `summary-value ${total > 0 ? "pos-result" : total < 0 ? "neg-result" : ""}`;
 
         tradesBody.replaceChildren();
+        clearBlobUrls(liveImageUrls);
 
         if (trades.length === 0) {
           const tr = document.createElement("tr");
@@ -1110,7 +1433,6 @@
               value: `${formatSignedNumber(trade.result)} U`,
               className: trade.result > 0 ? "pos-result" : trade.result < 0 ? "neg-result" : "",
             },
-            { label: "备注", value: trade.note || "—", className: "remark" },
           ];
 
           cells.forEach(cell => {
@@ -1120,6 +1442,36 @@
             td.setAttribute("data-label", cell.label);
             tr.appendChild(td);
           });
+
+          const remarkTd = document.createElement("td");
+          remarkTd.className = "remark";
+          remarkTd.setAttribute("data-label", "备注");
+          remarkTd.textContent = trade.note || "—";
+          const imageIds = Array.isArray(trade.images) ? trade.images : [];
+          if (imageIds.length) {
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "remark-images";
+            imageIds.forEach(imageId => {
+              const thumbButton = document.createElement("button");
+              thumbButton.type = "button";
+              thumbButton.className = "remark-image-btn";
+              thumbButton.setAttribute("aria-label", "查看大图");
+              const thumbImg = document.createElement("img");
+              thumbImg.alt = "实盘图片缩略图";
+              thumbButton.appendChild(thumbImg);
+              thumbButton.addEventListener("click", () => openLightbox(imageId));
+              getImageRecord(imageId).then(record => {
+                if (record && record.thumb) {
+                  const url = URL.createObjectURL(record.thumb);
+                  liveImageUrls.add(url);
+                  thumbImg.src = url;
+                }
+              }).catch(() => {});
+              imageWrap.appendChild(thumbButton);
+            });
+            remarkTd.appendChild(imageWrap);
+          }
+          tr.appendChild(remarkTd);
 
           const actionTd = document.createElement("td");
           actionTd.setAttribute("data-label", "操作");
@@ -1133,6 +1485,9 @@
               clearTimeout(pending);
               tradeDeleteTimers.delete(trade.id);
               trades = trades.filter(entry => entry.id !== trade.id);
+              if (Array.isArray(trade.images) && trade.images.length) {
+                deleteImageRecords(trade.images).catch(() => {});
+              }
               persistTrades();
               renderTrades();
               return;
@@ -1160,12 +1515,17 @@
         document.getElementById("trade-position").value = "";
         document.getElementById("trade-result").value = "";
         document.getElementById("trade-note").value = "";
+        clearPendingImages();
         setDefaultTradeTime();
         document.getElementById("trade-token").focus();
       }
 
       tradesForm.addEventListener("submit", event => {
         event.preventDefault();
+        handleTradeSubmit();
+      });
+
+      async function handleTradeSubmit() {
         tradesError.textContent = "";
 
         const token = document.getElementById("trade-token").value.trim();
@@ -1192,15 +1552,30 @@
           return;
         }
 
-        trades.push({ id: generateId(), time, token, position, result, note });
+        const imageIds = [];
+        try {
+          for (const item of pendingImages) {
+            const imageId = generateId();
+            await putImageRecord({ id: imageId, full: item.full, thumb: item.thumb, createdAt: Date.now() });
+            imageIds.push(imageId);
+          }
+        } catch (error) {
+          if (imageIds.length) deleteImageRecords(imageIds).catch(() => {});
+          showTradesError("图片保存失败，记录未添加，请重试。");
+          return;
+        }
+
+        trades.push({ id: generateId(), time, token, position, result, note, images: imageIds });
         if (trades.length > TRADES_LIMIT) {
           trades.length = TRADES_LIMIT;
         }
         if (persistTrades()) {
           renderTrades();
           resetTradesForm();
+        } else if (imageIds.length) {
+          deleteImageRecords(imageIds).catch(() => {});
         }
-      });
+      }
 
       loadHistory();
       renderHistory();
