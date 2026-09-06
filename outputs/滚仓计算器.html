@@ -178,6 +178,11 @@
     tbody tr:hover { background: rgba(65, 84, 115, 0.20); }
     .growth { color: var(--green); font-weight: 750; }
 
+    tbody tr.row-focus { background: rgba(32, 201, 107, 0.13); }
+    tbody tr.row-focus td { color: #fff; font-weight: 700; }
+    tbody tr.row-focus td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+    tbody tr.row-focus:hover { background: rgba(32, 201, 107, 0.20); }
+
     .summary {
       display: flex;
       flex-wrap: wrap;
@@ -197,6 +202,22 @@
       font-size: 13px;
       line-height: 1.6;
     }
+
+    .defaults-note { margin-top: 12px; }
+
+    .defaults-note .link-btn {
+      padding: 0 0 0 4px;
+      border: none;
+      background: none;
+      color: var(--green);
+      font: inherit;
+      font-size: 13px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+    }
+
+    .defaults-note .link-btn:hover { color: var(--green-hover); }
 
     .history-panel { margin-top: 24px; overflow: hidden; }
 
@@ -578,11 +599,11 @@
           </div>
           <div data-page-node-id="qQythiDNRSGI5numcUewMa">
             <label for="principal" data-page-node-id="Dpy2mPfqgUQDEPuHFGoTut">本金（U）</label>
-            <input id="principal" name="principal" type="number" value="600" min="0.00000001" step="any" inputmode="decimal" data-page-node-id="YDqgkhdGH33v3EeaS7vhZ3">
+            <input id="principal" name="principal" type="number" value="50" min="0.00000001" step="any" inputmode="decimal" data-page-node-id="YDqgkhdGH33v3EeaS7vhZ3">
           </div>
           <div data-page-node-id="lgPTbFy18tK5VKMO4McCLv">
             <label for="initial-leverage" data-page-node-id="qSJjoRNIlzg1b0L2tFYcN4">初始杠杆（倍）</label>
-            <input id="initial-leverage" name="initialLeverage" type="number" value="25" min="0.1" step="0.1" inputmode="decimal" data-page-node-id="WJ56U54HVbCmg5U9KEX4iL">
+            <input id="initial-leverage" name="initialLeverage" type="number" value="20" min="0.1" step="0.1" inputmode="decimal" data-page-node-id="WJ56U54HVbCmg5U9KEX4iL">
           </div>
           <div class="button-wrap" data-page-node-id="K8cbCRAqeF5vJhUDylJHuv">
             <button type="submit" data-page-node-id="E5DhCu8EVN9eGTkAinhwKo">开始计算</button>
@@ -591,6 +612,10 @@
           </div>
         </div>
         <p id="error" class="error" role="alert" aria-live="polite" data-page-node-id="W1wy1pBOfCtbDmZukLJ6MH"></p>
+        <p class="note defaults-note" data-page-node-id="Nq7defaultNote01">
+          本金与初始杠杆会自动记住上一次计算时填的值，下次打开自动带入。
+          <button type="button" id="reset-defaults" class="link-btn" data-page-node-id="Rt5resetDefaults01">恢复出厂默认（50 U / 20 倍）</button>
+        </p>
       </form>
     </section>
 
@@ -710,6 +735,9 @@
       // 杠杆用于下一阶段：下一阶段涨幅 = 1 / 上一阶段杠杆。
       const laterLeverages = [20, 20, 15, 10, 5, 3, 2, 1, 0.5, 0.2, 0.1];
 
+      // 需要着重强调的阶段（第几行）。改这个数字即可换一行强调，样式由 CSS 的 .row-focus 控制。
+      const FOCUS_STAGE = 4;
+
       const form = document.getElementById("calculator-form");
       const resultBody = document.getElementById("result-body");
       const errorBox = document.getElementById("error");
@@ -730,6 +758,9 @@
 
       const HISTORY_KEY = "rollcalc.history.v1";
       const HISTORY_LIMIT = 100;
+      const DEFAULTS_KEY = "rollcalc.defaults.v1";
+      const FACTORY_PRINCIPAL = 50;
+      const FACTORY_LEVERAGE = 20;
 
       let records = [];
       let lastResult = null;
@@ -786,6 +817,38 @@
         return { token, price, principal, initialLeverage };
       }
 
+      // 默认参数记忆：只记本金与初始杠杆，打开页面自动回填，可一键恢复出厂默认。
+      function loadDefaults() {
+        try {
+          const raw = localStorage.getItem(DEFAULTS_KEY);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (parsed && Number.isFinite(parsed.principal) && parsed.principal > 0) {
+            document.getElementById("principal").value = parsed.principal;
+          }
+          if (parsed && Number.isFinite(parsed.initialLeverage) && parsed.initialLeverage > 0) {
+            document.getElementById("initial-leverage").value = parsed.initialLeverage;
+          }
+        } catch (error) { /* 忽略损坏的默认值，回落到出厂值 */ }
+      }
+
+      function saveDefaults(inputs) {
+        try {
+          localStorage.setItem(DEFAULTS_KEY, JSON.stringify({
+            principal: inputs.principal,
+            initialLeverage: inputs.initialLeverage,
+          }));
+        } catch (error) { /* 隐私模式等情况下静默失败 */ }
+      }
+
+      function resetDefaults() {
+        try { localStorage.removeItem(DEFAULTS_KEY); } catch (error) {}
+        document.getElementById("principal").value = FACTORY_PRINCIPAL;
+        document.getElementById("initial-leverage").value = FACTORY_LEVERAGE;
+        runCalculation();
+        showSaveStatus("已恢复出厂默认：50 U / 20 倍");
+      }
+
       function calculateModel({ token, price, principal, initialLeverage }) {
         const leverages = [initialLeverage, ...laterLeverages];
         const rows = [];
@@ -833,6 +896,7 @@
 
         rows.forEach(row => {
           const tr = document.createElement("tr");
+          if (row.stage === FOCUS_STAGE) tr.classList.add("row-focus");
           const cells = [
             { value: row.stage },
             { value: row.token },
@@ -1123,7 +1187,10 @@
       form.addEventListener("submit", event => {
         event.preventDefault();
         runCalculation();
+        if (lastResult) saveDefaults(lastResult.inputs);
       });
+
+      document.getElementById("reset-defaults").addEventListener("click", resetDefaults);
 
       saveButton.addEventListener("click", handleSave);
 
@@ -1582,6 +1649,7 @@
       loadTrades();
       renderTrades();
       setDefaultTradeTime();
+      loadDefaults();
       runCalculation();
     })();
   </script>
