@@ -129,6 +129,8 @@
 
     .btn-secondary:hover:not(:disabled) { background: #273850; }
 
+    .btn-editing { background: var(--green); color: #0b1220; border-color: var(--green); box-shadow: none; }
+
     .error {
       min-height: 22px;
       margin: 14px 0 -4px;
@@ -697,7 +699,7 @@
           <input type="file" id="trade-images-input" accept="image/*" multiple hidden>
         </div>
         <div class="trades-submit-wrap">
-          <button type="submit">添加记录</button>
+          <button type="submit" id="trade-submit-btn">添加记录</button>
         </div>
       </form>
       <p id="trades-error" class="trades-error" role="alert" aria-live="polite"></p>
@@ -1295,6 +1297,8 @@
       let pendingImages = []; // { full: Blob, thumb: Blob }
       const pendingUrls = new Set();
       const liveImageUrls = new Set();
+      let editingTradeId = null; // 正在编辑的记录 id（null = 新增模式）
+      let editingExistingImageIds = []; // 编辑中保留的已有图片 id
 
       function clearBlobUrls(urlSet) {
         urlSet.forEach(url => URL.revokeObjectURL(url));
@@ -1304,6 +1308,35 @@
       function renderPendingImages() {
         clearBlobUrls(pendingUrls);
         imagesPreview.replaceChildren();
+
+        // 编辑模式下保留的已有图片
+        editingExistingImageIds.forEach((imageId, index) => {
+          const thumbBox = document.createElement("div");
+          thumbBox.className = "image-thumb";
+          const img = document.createElement("img");
+          img.alt = "已有图片";
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "thumb-remove";
+          removeButton.textContent = "×";
+          removeButton.setAttribute("aria-label", "移除这张图片");
+          removeButton.addEventListener("click", () => {
+            editingExistingImageIds.splice(index, 1);
+            renderPendingImages();
+          });
+          thumbBox.appendChild(img);
+          thumbBox.appendChild(removeButton);
+          imagesPreview.appendChild(thumbBox);
+          getImageRecord(imageId).then(record => {
+            if (record && record.thumb) {
+              const url = URL.createObjectURL(record.thumb);
+              pendingUrls.add(url);
+              img.src = url;
+            }
+          }).catch(() => {});
+        });
+
+        // 待添加的新图片
         pendingImages.forEach((item, index) => {
           const thumbBox = document.createElement("div");
           thumbBox.className = "image-thumb";
@@ -1329,6 +1362,9 @@
 
       function clearPendingImages() {
         pendingImages = [];
+        if (editingTradeId === null) {
+          editingExistingImageIds = [];
+        }
         renderPendingImages();
       }
 
@@ -1542,6 +1578,12 @@
 
           const actionTd = document.createElement("td");
           actionTd.setAttribute("data-label", "操作");
+          const editButton = document.createElement("button");
+          editButton.type = "button";
+          editButton.className = "btn-small btn-secondary";
+          editButton.textContent = "编辑";
+          editButton.addEventListener("click", () => startEditTrade(trade));
+          actionTd.appendChild(editButton);
           const deleteButton = document.createElement("button");
           deleteButton.type = "button";
           deleteButton.className = "btn-small btn-delete";
@@ -1577,13 +1619,41 @@
         tradesBody.appendChild(fragment);
       }
 
+      function startEditTrade(trade) {
+        clearPendingImages();
+        editingTradeId = trade.id;
+        editingExistingImageIds = Array.isArray(trade.images) ? [...trade.images] : [];
+        document.getElementById("trade-time").value = tradeTimestampToLocal(trade.time);
+        document.getElementById("trade-token").value = trade.token;
+        document.getElementById("trade-position").value = trade.position;
+        document.getElementById("trade-result").value = trade.result;
+        document.getElementById("trade-note").value = trade.note || "";
+        renderPendingImages();
+        const submitBtn = document.getElementById("trade-submit-btn");
+        submitBtn.textContent = "保存修改";
+        submitBtn.classList.add("btn-editing");
+        document.getElementById("trade-token").focus();
+        document.getElementById("trades-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function tradeTimestampToLocal(ts) {
+        const d = new Date(ts);
+        const pad = value => String(value).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+
       function resetTradesForm() {
+        editingTradeId = null;
+        editingExistingImageIds = [];
         document.getElementById("trade-token").value = "";
         document.getElementById("trade-position").value = "";
         document.getElementById("trade-result").value = "";
         document.getElementById("trade-note").value = "";
         clearPendingImages();
         setDefaultTradeTime();
+        const submitBtn = document.getElementById("trade-submit-btn");
+        submitBtn.textContent = "添加记录";
+        submitBtn.classList.remove("btn-editing");
         document.getElementById("trade-token").focus();
       }
 
@@ -1629,6 +1699,30 @@
         } catch (error) {
           if (imageIds.length) deleteImageRecords(imageIds).catch(() => {});
           showTradesError("图片保存失败，记录未添加，请重试。");
+          return;
+        }
+
+        if (editingTradeId !== null) {
+          const target = trades.find(entry => entry.id === editingTradeId);
+          if (!target) {
+            if (imageIds.length) deleteImageRecords(imageIds).catch(() => {});
+            resetTradesForm();
+            return;
+          }
+          const removedIds = (Array.isArray(target.images) ? target.images : []).filter(id => !editingExistingImageIds.includes(id));
+          if (removedIds.length) deleteImageRecords(removedIds).catch(() => {});
+          target.time = time;
+          target.token = token;
+          target.position = position;
+          target.result = result;
+          target.note = note;
+          target.images = editingExistingImageIds.concat(imageIds);
+          if (persistTrades()) {
+            renderTrades();
+            resetTradesForm();
+          } else if (imageIds.length) {
+            deleteImageRecords(imageIds).catch(() => {});
+          }
           return;
         }
 
