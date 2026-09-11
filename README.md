@@ -6,6 +6,8 @@
 
 直接用浏览器打开 `outputs/滚仓计算器.html` 即可使用，无需安装、无需联网、无任何外部请求。
 
+**在线体验：** https://roll-position-calculator-houfan.vercel.app
+
 ---
 
 ## 功能总览
@@ -108,7 +110,7 @@ node verify_trades.mjs     # 实盘记录：添加/总收益累加/倒序/配色
 
 ## 技术实现
 
-- **单 HTML 文件**（约 61KB）：HTML + CSS + 原生 JavaScript 全部内嵌，无框架、无构建、无网络请求，可离线使用；
+- **单 HTML 文件**（约 65 KB）：HTML + CSS + 原生 JavaScript 全部内嵌，无框架、无构建、无网络请求，可离线使用；
 - **存储**：文字走 localStorage，图片走 IndexedDB（每图存「原图 + 缩略图」两份 Blob，写入前用 canvas 压缩：原图长边 1600px、缩略图 320px，JPEG 编码），读写均有异常兜底（如隐私模式下提示而非崩溃）；
 - **响应式**：桌面表格布局，窄屏自动切换为卡片式布局（680px 断点），移动端无横向滚动。
 
