@@ -21,6 +21,78 @@
       --shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
     }
 
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --page: #f3f6fb;
+      --panel: #ffffff;
+      --panel-soft: #e9eff6;
+      --field: #e5ebf3;
+      --header: #dde5ef;
+      --line: rgba(23, 43, 77, 0.14);
+      --text: #16233a;
+      --muted: #5b6b84;
+      --green: #0b8f4f;
+      --green-hover: #097a44;
+      --danger: #d64550;
+      --shadow: 0 18px 50px rgba(35, 55, 95, 0.12);
+    }
+
+    :root[data-theme="light"] body {
+      background:
+        radial-gradient(circle at 12% 0%, rgba(51, 79, 124, 0.10), transparent 32rem),
+        var(--page);
+    }
+
+    :root[data-theme="light"] .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 254, 0.98));
+      border: 1px solid rgba(23, 43, 77, 0.10);
+    }
+
+    :root[data-theme="light"] input:hover,
+    :root[data-theme="light"] textarea:hover { background: #dce4ee; }
+
+    :root[data-theme="light"] input:focus,
+    :root[data-theme="light"] textarea:focus { box-shadow: 0 0 0 3px rgba(11, 143, 79, 0.18); }
+
+    :root[data-theme="light"] button:focus-visible,
+    :root[data-theme="light"] .history-toggle:focus-visible { outline-color: rgba(11, 143, 79, 0.55); }
+
+    :root[data-theme="light"] .btn-secondary:hover:not(:disabled) { background: #dbe4ef; }
+
+    :root[data-theme="light"] .btn-editing { color: #ffffff; }
+
+    :root[data-theme="light"] .table-scroll { scrollbar-color: #b8c5d6 #e7edf4; }
+
+    :root[data-theme="light"] tbody tr:hover { background: rgba(30, 58, 100, 0.07); }
+    :root[data-theme="light"] tbody tr.row-focus { background: rgba(11, 143, 79, 0.12); }
+    :root[data-theme="light"] tbody tr.row-focus td { color: #0b3d24; font-weight: 700; }
+    :root[data-theme="light"] tbody tr.row-focus:hover { background: rgba(11, 143, 79, 0.18); }
+
+    :root[data-theme="light"] .summary-value { color: #16233a; }
+    :root[data-theme="light"] .pos-result { color: var(--danger); }
+    :root[data-theme="light"] .neg-result { color: var(--green); }
+    :root[data-theme="light"] .divider { color: #8b9bb2; }
+    :root[data-theme="light"] .history-result strong { color: #16233a; }
+
+    :root[data-theme="light"] .btn-ghost:hover { background: rgba(30, 58, 100, 0.08); }
+    :root[data-theme="light"] .btn-danger-ghost:hover,
+    :root[data-theme="light"] .btn-danger-ghost.confirming,
+    :root[data-theme="light"] .btn-delete:hover,
+    :root[data-theme="light"] .btn-delete.confirming { background: rgba(214, 69, 80, 0.10); }
+    :root[data-theme="light"] .history-item:hover { background: rgba(30, 58, 100, 0.05); }
+
+    :root[data-theme="light"] .images-drop {
+      border-color: rgba(23, 43, 77, 0.32);
+      background: rgba(23, 43, 77, 0.03);
+    }
+
+    :root[data-theme="light"] .images-drop:hover,
+    :root[data-theme="light"] .images-drop:focus-visible,
+    :root[data-theme="light"] .images-drop.dragover { background: rgba(11, 143, 79, 0.08); }
+
+    :root[data-theme="light"] .remark-image-btn { background: rgba(23, 43, 77, 0.05); }
+    :root[data-theme="light"] .lightbox { background: rgba(14, 22, 38, 0.72); }
+
     * { box-sizing: border-box; }
 
     body {
@@ -48,7 +120,7 @@
       box-shadow: var(--shadow);
     }
 
-    .control-panel { padding: 32px 34px 28px; }
+    .control-panel { position: relative; padding: 32px 34px 28px; }
 
     h1 {
       margin: 0 0 30px;
@@ -64,6 +136,34 @@
       color: var(--muted);
       font-size: 14px;
     }
+
+    .theme-switcher {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      width: auto;
+      min-width: 0;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: transparent;
+      box-shadow: none;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+
+    .theme-switcher:hover { background: rgba(65, 84, 115, 0.18); color: var(--text); transform: none; }
+    .theme-switcher:focus-visible { outline: 3px solid rgba(255, 255, 255, 0.75); outline-offset: 2px; }
+    :root[data-theme="light"] .theme-switcher:hover { background: rgba(30, 58, 100, 0.08); }
+    :root[data-theme="light"] .theme-switcher:focus-visible { outline-color: rgba(11, 143, 79, 0.55); }
 
     .controls {
       display: grid;
@@ -551,13 +651,10 @@
       .trades-form .field-remark, .trades-form .trades-submit-wrap { grid-column: 1 / -1; }
     }
 
-    @media (max-width: 680px) {
+@media (max-width: 680px) {
       .app { width: min(100% - 24px, 1900px); padding-top: 12px; }
       .control-panel { padding: 24px 18px 20px; }
-      .controls { grid-template-columns: 1fr; gap: 14px; }
-      .button-wrap { grid-column: auto; }
-      .results-panel { margin-top: 14px; padding: 14px 12px 16px; border-radius: 14px; }
-      h1 { margin-bottom: 25px; }
+      .theme-switcher { position: static; margin: 0 auto 4px; }
       .subtitle { margin-top: -17px; }
       label { font-size: 16px; }
       input, button { height: 52px; font-size: 17px; }
@@ -586,8 +683,11 @@
 <body data-page-node-id="ZMa0X0xH1cGPuudrwZynRd">
   <main class="app" data-page-node-id="aNpLnkxlnzVJP8HXAjBPVC">
     <section class="panel control-panel" aria-labelledby="page-title" data-page-node-id="eDN0VkcGTxkL61aTzRenX4">
-      <h1 id="page-title" data-page-node-id="ypcpHqqN9Hxc2oxXb6kna1">滚仓计算器</h1>
-      <p class="subtitle" data-page-node-id="Iq9BqWKjwPayuZAWmLWIWW">涨幅 × 上一阶段杠杆 = 1，资产逐级翻倍</p>
+      <div class="page-head">
+        <h1 id="page-title" data-page-node-id="ypcpHqqN9Hxc2oxXb6kna1">滚仓计算器</h1>
+        <button type="button" id="theme-switcher" class="theme-switcher" aria-label="主题模式：深色模式，点击切换到浅色模式">深色模式</button>
+        <p class="subtitle" data-page-node-id="Iq9BqWKjwPayuZAWmLWIWW">涨幅 × 上一阶段杠杆 = 1，资产逐级翻倍</p>
+      </div>
 
       <form id="calculator-form" novalidate data-page-node-id="V2ZDazvboBnJitqHdzCWTc">
         <div class="controls" data-page-node-id="PDPA6rN1Bq0b7wqKBECWu4">
@@ -757,6 +857,60 @@
       const exportHistoryButton = document.getElementById("export-history");
       const importHistoryButton = document.getElementById("import-history");
       const importFileInput = document.getElementById("import-file");
+
+      // ---------- 主题：深色 / 浅色 / 跟随系统 ----------
+      const THEME_KEY = "rollcalc.theme.v1";
+      const THEME_MODES = ["dark", "light", "auto"];
+      const THEME_LABELS = { dark: "深色模式", light: "浅色模式", auto: "跟随系统" };
+      const themeSwitcher = document.getElementById("theme-switcher");
+      const themeMedia = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
+
+      function loadThemePreference() {
+        try {
+          const stored = localStorage.getItem(THEME_KEY);
+          if (stored && THEME_MODES.includes(stored)) return stored;
+        } catch (error) { /* 隐私模式等情况下回落默认 */ }
+        return "dark";
+      }
+
+      function saveThemePreference(mode) {
+        try { localStorage.setItem(THEME_KEY, mode); } catch (error) {}
+      }
+
+      function resolveTheme(mode) {
+        if (mode !== "auto" || !themeMedia) return mode;
+        return themeMedia.matches ? "light" : "dark";
+      }
+
+      function applyTheme(mode) {
+        document.documentElement.setAttribute("data-theme", resolveTheme(mode));
+        if (themeSwitcher) {
+          themeSwitcher.textContent = THEME_LABELS[mode];
+          themeSwitcher.setAttribute("aria-label", `主题模式：${THEME_LABELS[mode]}，点击切换`);
+        }
+      }
+
+      function cycleTheme() {
+        const current = loadThemePreference();
+        const next = THEME_MODES[(THEME_MODES.indexOf(current) + 1) % THEME_MODES.length];
+        applyTheme(next);
+        saveThemePreference(next);
+      }
+
+      if (themeMedia) {
+        const onSystemThemeChange = () => {
+          if (loadThemePreference() === "auto") applyTheme("auto");
+        };
+        if (typeof themeMedia.addEventListener === "function") {
+          themeMedia.addEventListener("change", onSystemThemeChange);
+        } else if (typeof themeMedia.addListener === "function") {
+          themeMedia.addListener(onSystemThemeChange);
+        }
+      }
+
+      if (themeSwitcher) themeSwitcher.addEventListener("click", cycleTheme);
+
+      applyTheme(loadThemePreference());
 
       const HISTORY_KEY = "rollcalc.history.v1";
       const HISTORY_LIMIT = 100;
